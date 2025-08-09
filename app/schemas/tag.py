@@ -12,15 +12,15 @@ class TagRequest(BaseModel):
         description="List of input texts to tag",
         examples=[["Elon Musk visited Berlin.", "NVIDIA announced new GPUs."]]
     )
-    domain_dict: Optional[List[str]] = Field(
-        None,
-        description="Optional list of domain-specific keywords to bias tagging",
-        examples=[["technology", "AI", "NVIDIA"]]
-    )
     language: Optional[str] = Field(
         None,
         description="Optional hint for language (e.g., 'en', 'fr')",
         examples=["en", "fr", "de"]
+    )
+    domain_dict: Optional[List[str]] = Field(
+        None,
+        description="Optional list of domain-specific keywords to bias tagging",
+        examples=[["technology", "AI", "NVIDIA"]]
     )
 
 class TagResult(BaseModel):
@@ -31,3 +31,11 @@ class TagResult(BaseModel):
 
 class TagResponse(BaseModel):
     results: List[TagResult]
+
+class BatchSubmitResponse(BaseModel):
+    job_id: str
+
+class BatchStatusResponse(BaseModel):
+    status: str # PENDING | STARTED | RETRY | FAILURE | SUCCESS
+    result: Optional[TagResponse] = None
+    error: Optional[str] = None
