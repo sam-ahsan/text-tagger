@@ -19,7 +19,7 @@ class TaggingService:
         
         results = []
         for i, text in enumerate(texts):
-            ner_tags = {e["text"] for e in ner_details_per_text[i]}
+            ner_tags = {entry["text"] for entry in ner_details_per_text[i]}
             topic_tag = topic_outputs[i]
             
             domain_tags = set()
