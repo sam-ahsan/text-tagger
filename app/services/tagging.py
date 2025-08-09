@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Set
 from app.models.ner import NERModel
 from app.models.topic_classifier import TopicClassifier
-from app.schemas.tag import TagResult
+from app.schemas.tag import TagResult, Entity
 
 import logging
 logger = logging.getLogger(__name__)
@@ -14,12 +14,12 @@ class TaggingService:
     def tag_texts(
         self, texts: List[str], language: Optional[str] = None, domain_dict: Optional[List[str]] = None
     ) -> List[TagResult]:
-        ner_outputs = self.ner_model.predict(texts)
+        ner_details_per_text = self.ner_model.predict(texts)
         topic_outputs = self.topic_model.predict(texts)
         
         results = []
         for i, text in enumerate(texts):
-            ner_tags = set(ner_outputs[i])
+            ner_tags = {e["text"] for e in ner_details_per_text[i]}
             topic_tag = topic_outputs[i]
             
             domain_tags = set()
@@ -30,12 +30,14 @@ class TaggingService:
 
             logger.debug(f"Text: {text}, NER Tags: {ner_tags}, Domain Tags: {domain_tags}, Topic Tag: {topic_tag}")
 
-            combined_tags = list(ner_tags | domain_tags | {topic_tag})
+            combined_tags = sorted(ner_tags | domain_tags | {topic_tag})
+            ner_entities = [Entity(**e) for e in ner_details_per_text[i]]
             
             results.append(TagResult(
                 text=text,
                 tags=combined_tags,
-                language=language
+                language=language,
+                ner=ner_entities
             ))
         
         return results
