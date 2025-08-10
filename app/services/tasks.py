@@ -11,12 +11,19 @@ from app.workers.celery_app import celery_app
 from app.services.tagging import TaggingService
 from app.core.redis_client import get_redis
 from app.core.hash import normalize_payload, payload_hash
+from prometheus_client import Counter
 
 task_logger = logging.getLogger("text-tagger.task")
 _tagger = TaggingService()
 _redis = get_redis()
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "600"))
 MAX_RETRIES = int(os.getenv("CELERY_MAX_RETRIES", "2"))
+
+# Redis metric keys
+METR_KEY_TASKS_SUCCESS = "metrics:tasks_total:success"
+METR_KEY_TASKS_FAILURE = "metrics:tasks_total:failure"
+METR_KEY_TASKS_TIMEOUT = "metrics:tasks_total:timeout"
+METR_KEY_CACHE_HIT = "metrics:cache_hits_total"
 
 def _hash_kwargs(texts, language, domain_dict) -> str:
     body = {"texts": texts, "language": language, "domain_dict": domain_dict}
@@ -52,6 +59,7 @@ def tag_batch_task(
     # Cache read-through: return cached result if exists
     cached = _redis.get(result_key)
     if cached:
+        _redis.incr(METR_KEY_CACHE_HIT, 1)
         return json.loads(cached)
     
     try:
@@ -64,6 +72,7 @@ def tag_batch_task(
         
         _redis.setex(result_key, CACHE_TTL, json.dumps(payload, ensure_ascii=False))
         _redis.setex(inflight_key, CACHE_TTL, self.request.id)
+        _redis.incr(METR_KEY_TASKS_SUCCESS, 1)
         
         task_logger.info(
             f"job_id={self.request.id} request_id={request_id} batch_size={len(texts)} " \
@@ -74,6 +83,8 @@ def tag_batch_task(
     except SoftTimeLimitExceeded:
         err = {"error": {"code": "TIMEOUT", "message": "Tagging timed out"}}
         _redis.setex(result_key, CACHE_TTL, json.dumps(err))
+        _redis.incr(METR_KEY_TASKS_TIMEOUT, 1)
+        
         task_logger.info(
             f"job_id={self.request.id} request_id={request_id} batch_size={len(texts)} " \
             f"duration_ms={int((time.time() - start) * 1000)} cached={bool(cached)}"
@@ -87,6 +98,11 @@ def _on_task_prerun(task_id, task, **kwargs):
 @task_postrun.connect
 def _on_task_postrun(task_id, task, retval, state, **kwargs):
     ok = state == "SUCCESS"
+    if state == "FAILURE":
+        try:
+            _redis.incr(METR_KEY_TASKS_FAILURE, 1)
+        except Exception:
+            task_logger.warning("Failed to increment failure counter")
     task_logger.info(f"task_postrun task={task.name} job_id={task_id} state={state} ok={ok}")
 
 @worker_process_init.connect

@@ -4,17 +4,25 @@ import logging
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from prometheus_client import REGISTRY
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 from app.api.v1 import tag
 from app.core.redis_client import get_redis
 from app.workers.celery_app import celery_app
+from app.core.metrics import RedisCeleryCollector
 
 logger = logging.getLogger("text-tagger")
 logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app: FastAPI):
     logger.info("api_startup begin")
+    
+    try:
+        REGISTRY.register(RedisCeleryCollector())
+    except ValueError:
+        pass
     
     try:
         redis = get_redis()
@@ -45,10 +53,26 @@ async def lifespan():
 app = FastAPI(
     title="Text Tagger API",
     version="0.1.0",
-    description="AI-powered text tagging API"
+    description="AI-powered text tagging API",
+    lifespan=lifespan
 )
 
 app.include_router(tag.router, prefix="/v1", tags=["tagging"])
+
+instr = Instrumentator(
+    should_group_status_codes=True,
+    should_ignore_untemplated=True,
+    should_respect_env_var=False,
+)
+instr.add(metrics.default())
+instr.add(metrics.latency(buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2)))
+if hasattr(metrics, "requests"):
+    instr.add(metrics.requests())
+if hasattr(metrics, "response_size"):
+    instr.add(metrics.response_size())
+if hasattr(metrics, "exceptions"):
+    instr.add(metrics.exceptions())
+instr.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
