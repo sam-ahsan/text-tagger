@@ -5,3 +5,5 @@ transformers==4.43.0
 torch==2.3.0
 celery==5.4.0
 redis==5.0.4
+prometheus-client==0.22.1
+prometheus-fastapi-instrumentator==7.1.0
