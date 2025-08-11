@@ -13,6 +13,9 @@ from app.core.redis_client import get_redis
 from app.workers.celery_app import celery_app
 from app.core.metrics import RedisCeleryCollector, _queue_len
 
+START_TS = time.time()
+VERSION = os.getenv("VERSION", "0.1.0")
+
 logger = logging.getLogger("text-tagger")
 logging.basicConfig(level=logging.INFO)
 
@@ -99,11 +102,27 @@ def favicon():
         "message": "This is the favicon endpoint."
     }
 
-@app.get("/healthz")
+@app.get("/healthz", tags=["ops"])
 def health_check():
-    return {
-        "status": "ok"
+    """
+    Liveness: process is up and event loop is responsive.
+    Redis ping is informational; failure does not flip to 503.
+    """
+    info = {
+        "status": "up",
+        "version": VERSION,
+        "uptime_s": int(time.time() - START_TS),
+        "redis": False
     }
+    try:
+        redis = get_redis()
+        info["redis"] = bool(redis.ping())
+    except Exception:
+        pass
+    
+    if not info["redis"]:
+        info["status"] = "degraded"
+    return info
 
 @app.get("/readyz", tags=["ops"])
 def readiness_check():
