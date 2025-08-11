@@ -1,16 +1,17 @@
 import time
 import uuid
 import logging
+import os
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from prometheus_client import REGISTRY
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 from app.api.v1 import tag
 from app.core.redis_client import get_redis
 from app.workers.celery_app import celery_app
-from app.core.metrics import RedisCeleryCollector
+from app.core.metrics import RedisCeleryCollector, _queue_len
 
 logger = logging.getLogger("text-tagger")
 logging.basicConfig(level=logging.INFO)
@@ -103,3 +104,48 @@ def health_check():
     return {
         "status": "ok"
     }
+
+@app.get("/readyz", tags=["ops"])
+def readiness_check():
+    """
+    Readiness = can this instance handle traffic right now?
+    - Redis ping ok
+    - Celery ping gets >= 1 reply
+    - (Optional) Queue length not absurdly high
+    """
+    details = {"redis": False, "celery_replies": 0, "queue_length": None}
+    ok = True
+    
+    # Redis ping
+    try:
+        redis = get_redis()
+        details["redis"] = bool(redis.ping())
+    except Exception as e:
+        logger.warning(f"readyz: redis ping failed: {e}")
+        ok = False
+    
+    # Celery ping
+    try:
+        replies = celery_app.control.ping(timeout=1) or []
+        details["celery_replies"] = len(replies)
+        if len(replies) == 0:
+            ok = False
+    except Exception as e:
+        logger.warning(f"readyz: celery ping failed: {e}")
+        ok = False
+    
+    # Queue length check
+    try:
+        queue_name = os.getenv("CELERY_TAGGING_QUEUE", "tagging")
+        queue_len = _queue_len(get_redis(), queue_name)
+        details["queue_length"] = queue_len
+        if queue_len > 1000:
+            ok = False
+    except Exception as e:
+        logger.warning(f"readyz: queue length check failed: {e}")
+        ok = False
+    
+    if not ok:
+        raise HTTPException(status_code=503, detail={"ready": False, **details})
+
+    return {"ready": True, **details}

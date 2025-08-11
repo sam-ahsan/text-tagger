@@ -1,3 +1,5 @@
+import os
+
 from typing import Iterable
 from prometheus_client.core import CounterMetricFamily
 from prometheus_client.registry import Collector
@@ -14,6 +16,20 @@ _METRICS = {
         "hit": "metrics:cache_hits_total"
     }
 }
+
+def _queue_len(redis, name: str) -> int:
+    """
+    Return the length of the Celery Redis queue.
+    """
+    try_keys = [name, f"queue:{name}"]
+    for key in try_keys:
+        try:
+            num = redis.llen(key)
+            if num is not None and num >= 0:
+                return int(num)
+        except Exception:
+            pass
+    return 0
 
 class RedisCeleryCollector(Collector):
     def collect(self) -> Iterable[CounterMetricFamily]:
@@ -45,3 +61,14 @@ class RedisCeleryCollector(Collector):
             val = 0
         cache_hits.add_metric([], val)
         yield cache_hits
+        
+        # Queue length gauge
+        queue_name = os.getenv("CELERY_TAGGING_QUEUE", "tagging")
+        queue_len = _queue_len(redis, queue_name)
+        gauge = CounterMetricFamily(
+            "tagging_queue_length",
+            f"Current backlog (LLEN) of Celery queue '{queue_name}'",
+            labels=[]
+        )
+        gauge.add_metric([], queue_len)
+        yield gauge
