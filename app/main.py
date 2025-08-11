@@ -76,7 +76,7 @@ if hasattr(metrics, "response_size"):
     instr.add(metrics.response_size())
 if hasattr(metrics, "exceptions"):
     instr.add(metrics.exceptions())
-instr.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+instr.instrument(app).expose(app, endpoint="/metrics", tags=["ops"])
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
