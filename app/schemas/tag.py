@@ -37,35 +37,19 @@ class Entity(BaseModel):
     label: str = Field(..., description="Entity type label, e.g. PER/ORG/LOC/MISC")
     score: float = Field(..., ge=0.0, le=1.0, description="Model confidence for this entity")
 
+class TopicScore(BaseModel):
+    label: str = Field(..., description="Topic label")
+    score: float = Field(..., ge=0.0, le=1.0, description="Model confidence for this topic")
+
 class TagResult(BaseModel):
-    model_config = {"extra": "forbid"}
     text: str
     tags: List[str]
     language: Optional[str] = None
     ner: Optional[List[Entity]] = None
+    topics: Optional[List[TopicScore]] = None
 
 class TagResponse(BaseModel):
     results: List[TagResult]
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "results": [{
-                    "text": "Elon Musk visited Berlin.",
-                    "tags": ["ORG", "LOC"],
-                    "language": "en",
-                    "ner": [{
-                        "text": "Elon Musk",
-                        "label": "ORG",
-                        "score": 0.99
-                    }, {
-                        "text": "Berlin",
-                        "label": "LOC",
-                        "score": 0.98
-                    }]
-                }]
-            }]
-        }
-    }
 
 class BatchSubmitResponse(BaseModel):
     job_id: str
