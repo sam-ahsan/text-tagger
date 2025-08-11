@@ -1,7 +1,7 @@
 import os
 
 from typing import Iterable
-from prometheus_client.core import CounterMetricFamily
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily, HistogramMetricFamily
 from prometheus_client.registry import Collector
 from app.core.redis_client import get_redis
 
@@ -16,6 +16,9 @@ _METRICS = {
         "hit": "metrics:cache_hits_total"
     }
 }
+
+_HIST_PREFIX = "metrics:task_duration_ms"
+_HIST_BUCKETS_MS = [50, 100, 250, 500, 1000, 2000, 5000] # +Inf implicit
 
 def _queue_len(redis, name: str) -> int:
     """
@@ -72,3 +75,40 @@ class RedisCeleryCollector(Collector):
         )
         gauge.add_metric([], queue_len)
         yield gauge
+        
+        # Task duration histogram
+        buckets = []
+        for bucket in _HIST_BUCKETS_MS:
+            try:
+                val = int(redis.get(f"{_HIST_PREFIX}:bucket:le_{bucket}") or 0)
+            except Exception:
+                val = 0
+            buckets.append((float(bucket) / 1000.0, val))
+        
+        try:
+            inf_val = int(redis.get(f"{_HIST_PREFIX}:bucket:le_inf") or 0)
+        except Exception:
+            inf_val = 0
+        buckets.append((float("inf"), inf_val))
+        
+        try:
+            hist_sum = float(redis.get(f"{_HIST_PREFIX}:sum") or 0.0)
+            hist_count = int(redis.get(f"{_HIST_PREFIX}:count") or 0)
+        except Exception:
+            hist_sum, hist_count = 0.0, 0
+        
+        histogram = HistogramMetricFamily(
+            "tagging_task_duration_seconds",
+            "Distribution of tagging Celery task durations (seconds)",
+            labels=[]
+        )
+        histogram.add_sample("tagging_task_duration_seconds_sum", labels=[], value=hist_sum)
+        histogram.add_sample("tagging_task_duration_seconds_count", labels=[], value=hist_count)
+        
+        for le, count in buckets:
+            histogram.add_sample(
+                "tagging_task_duration_seconds_bucket",
+                labels={"le": str(le)},
+                value=count
+            )
+        yield histogram

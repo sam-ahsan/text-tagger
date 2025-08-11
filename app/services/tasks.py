@@ -25,6 +25,31 @@ METR_KEY_TASKS_FAILURE = "metrics:tasks_total:failure"
 METR_KEY_TASKS_TIMEOUT = "metrics:tasks_total:timeout"
 METR_KEY_CACHE_HIT = "metrics:cache_hits_total"
 
+# Histogram keys (per Prometheus exposition)
+HIST_PREFIX = "metrics:task_duration_ms"
+HIST_BUCKETS_MS = [50, 100, 250, 500, 1000, 2000, 5000] # +Inf is implicit
+
+def _hist_observe_ms(ms: int):
+    """
+    Record one observation into Redis-backed histogram.
+    """
+    pipe = _redis.pipeline()
+    pipe.incrbyfloat(f"{HIST_PREFIX}:sum", float(ms))
+    pipe.incr(f"{HIST_PREFIX}:count", 1)
+    
+    placed = False
+    for bucket in HIST_BUCKETS_MS:
+        if ms <= bucket:
+            pipe.incr(f"{HIST_PREFIX}:bucket:le_{bucket}", 1)
+            placed = True
+            break
+    if not placed:
+        pipe.incr(f"{HIST_PREFIX}:bucket:le_inf", 1)
+    try:
+        pipe.execute()
+    except Exception:
+        pass
+
 def _hash_kwargs(texts, language, domain_dict) -> str:
     body = {"texts": texts, "language": language, "domain_dict": domain_dict}
     s = json.dumps(body, sort_keys=True, ensure_ascii=False)
@@ -60,6 +85,8 @@ def tag_batch_task(
     cached = _redis.get(result_key)
     if cached:
         _redis.incr(METR_KEY_CACHE_HIT, 1)
+        dur_ms = int((time.time() - start) * 1000)
+        _hist_observe_ms(dur_ms)
         return json.loads(cached)
     
     try:
@@ -74,9 +101,12 @@ def tag_batch_task(
         _redis.setex(inflight_key, CACHE_TTL, self.request.id)
         _redis.incr(METR_KEY_TASKS_SUCCESS, 1)
         
+        dur_ms = int((time.time() - start) * 1000)
+        _hist_observe_ms(dur_ms)
+
         task_logger.info(
             f"job_id={self.request.id} request_id={request_id} batch_size={len(texts)} " \
-            f"duration_ms={int((time.time() - start) * 1000)} cached={bool(cached)}"
+            f"duration_ms={dur_ms} cached={bool(cached)}"
         )
         return payload
     
@@ -85,9 +115,12 @@ def tag_batch_task(
         _redis.setex(result_key, CACHE_TTL, json.dumps(err))
         _redis.incr(METR_KEY_TASKS_TIMEOUT, 1)
         
+        dur_ms = int((time.time() - start) * 1000)
+        _hist_observe_ms(dur_ms)
+        
         task_logger.info(
             f"job_id={self.request.id} request_id={request_id} batch_size={len(texts)} " \
-            f"duration_ms={int((time.time() - start) * 1000)} cached={bool(cached)}"
+            f"duration_ms={dur_ms} cached={bool(cached)}"
         )
         return err
 
