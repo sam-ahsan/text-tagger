@@ -1,10 +1,10 @@
-import re
 import logging
+import re
+from typing import Dict, List, Optional, Set
 
-from typing import List, Optional, Dict, Set
 from app.models.ner import NERModel
 from app.models.topic_classifier import TopicClassifier
-from app.schemas.tag import TagResult, Entity, TopicScore
+from app.schemas.tag import Entity, TagResult, TopicScore
 
 logger = logging.getLogger(__name__)
 

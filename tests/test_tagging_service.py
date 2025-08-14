@@ -1,5 +1,6 @@
 from app.services.tagging import TaggingService
 
+
 def test_tagging_service_basic():
     tagger = TaggingService()
     

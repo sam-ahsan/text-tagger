@@ -1,8 +1,9 @@
 import os
-
 from typing import Iterable
-from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily, HistogramMetricFamily
+
+from prometheus_client.core import CounterMetricFamily, HistogramMetricFamily
 from prometheus_client.registry import Collector
+
 from app.core.redis_client import get_redis
 
 # Keys used by the worker

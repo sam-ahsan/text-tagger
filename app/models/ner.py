@@ -1,7 +1,8 @@
 import string
+from typing import Dict, List
 
 from transformers import pipeline
-from typing import List, Dict
+
 
 class NERModel:
     def __init__(self, model_name: str = "dslim/bert-base-NER"):

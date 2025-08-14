@@ -1,8 +1,9 @@
 import os
 import time
+from typing import Tuple
 
 from fastapi import HTTPException, status
-from typing import Tuple
+
 from app.core.redis_client import get_redis
 
 REQS = int(os.getenv("RATE_LIMIT_REQS", "60"))

@@ -1,5 +1,7 @@
 from pydantic import ValidationError
+
 from app.schemas.tag import TagRequest
+
 
 def test_tag_request_validation_ok():
     request = TagRequest(texts=["hello", "world"])

@@ -1,5 +1,6 @@
 import time
 
+
 def wait_for_success(client, job_id: str, timeout: float = 5.0, interval: float = 0.5):
     deadline = time.monotonic() + timeout
     last = None

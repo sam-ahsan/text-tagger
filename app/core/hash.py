@@ -1,6 +1,7 @@
-import json, hashlib
-
+import hashlib
+import json
 from typing import Any, Dict, List, Optional
+
 
 def normalize_payload(
     *, texts: List[str], language: Optional[str], domain_dict: Optional[List[str]]

@@ -1,17 +1,17 @@
-import time
-import uuid
 import logging
 import os
-
+import time
+import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, HTTPException
+
+from fastapi import FastAPI, HTTPException, Request
 from prometheus_client import REGISTRY
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 from app.api.v1 import tag
+from app.core.metrics import RedisCeleryCollector, _queue_len
 from app.core.redis_client import get_redis
 from app.workers.celery_app import celery_app
-from app.core.metrics import RedisCeleryCollector, _queue_len
 
 START_TS = time.time()
 VERSION = os.getenv("VERSION", "0.1.0")

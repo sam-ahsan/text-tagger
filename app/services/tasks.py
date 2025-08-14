@@ -1,17 +1,17 @@
-import os
-import json
 import hashlib
+import json
 import logging
+import os
 import time
-
 from typing import List, Optional
+
 from celery.exceptions import SoftTimeLimitExceeded
-from celery.signals import task_prerun, task_postrun, worker_process_init, worker_shutdown
-from app.workers.celery_app import celery_app
-from app.services.tagging import TaggingService
-from app.core.redis_client import get_redis
+from celery.signals import task_postrun, task_prerun, worker_process_init, worker_shutdown
+
 from app.core.hash import normalize_payload, payload_hash
-from prometheus_client import Counter
+from app.core.redis_client import get_redis
+from app.services.tagging import TaggingService
+from app.workers.celery_app import celery_app
 
 task_logger = logging.getLogger("text-tagger.task")
 _tagger = TaggingService()

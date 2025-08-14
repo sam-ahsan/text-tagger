@@ -1,5 +1,7 @@
+from typing import List
+
 from transformers import pipeline
-from typing import List, Dict, Any
+
 
 class TopicClassifier:
     def __init__(self, labels: List[str] | None = None, model_name: str = "facebook/bart-large-mnli"):

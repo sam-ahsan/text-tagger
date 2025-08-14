@@ -1,25 +1,15 @@
-import hashlib
-import json
-import time
 import os
 
-from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
 from celery.result import AsyncResult
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.schemas.tag import (
-    TagRequest,
-    TagResponse,
-    BatchSubmitResponse,
-    BatchStatusResponse,
-    ErrorInfo
-)
+from app.api.deps import auth_and_rate_limit
+from app.core.hash import normalize_payload, payload_hash
+from app.core.redis_client import get_redis
+from app.schemas.tag import BatchStatusResponse, BatchSubmitResponse, ErrorInfo, TagRequest, TagResponse
 from app.services.tagging import TaggingService
 from app.services.tasks import tag_batch_task
 from app.workers.celery_app import celery_app
-from app.core.redis_client import get_redis
-from app.core.hash import normalize_payload, payload_hash
-from app.api.deps import auth_and_rate_limit, AuthContext
 
 router = APIRouter(dependencies=[Depends(auth_and_rate_limit)])
 tagger = TaggingService()

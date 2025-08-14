@@ -1,6 +1,6 @@
 import os
+
 from redis import Redis
-from urllib.parse import urlparse
 
 _client: Redis | None = None
 

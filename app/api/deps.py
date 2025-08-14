@@ -1,7 +1,10 @@
 import time
+
 from fastapi import Depends, Response
-from app.core.auth import require_api_key, AuthContext
+
+from app.core.auth import AuthContext, require_api_key
 from app.core.rate_limit import check_rate_limit
+
 
 async def auth_and_rate_limit(resp: Response, ctx: AuthContext = Depends(require_api_key)) -> AuthContext:
     # Rate limit by API key

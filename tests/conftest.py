@@ -1,5 +1,6 @@
 # tests/conftest.py
 import os
+
 import fakeredis
 
 # --- 1) Set env BEFORE importing app modules ---
@@ -15,19 +16,22 @@ os.environ.setdefault("CACHE_NS", "test")
 fake_r = fakeredis.FakeRedis(decode_responses=True)
 
 from app.core import redis_client as redis_client_mod  # noqa: E402
+
+
 def _fake_get_redis():
     return fake_r
 # Monkeypatch-like override at import time (no pytest needed yet)
 redis_client_mod.get_redis = _fake_get_redis  # type: ignore[attr-defined]
 
 # --- 3) Now it is safe to import app.main (startup will use fake redis) ---
-import app.main as main_mod  # noqa: E402
-
 # --- 4) Import the rest AFTER main is loaded ---
 from fastapi.testclient import TestClient  # noqa: E402
+
+import app.main as main_mod  # noqa: E402
 from app.services import tasks as tasks_mod  # noqa: E402
-from app.workers.celery_app import celery_app  # noqa: E402
 from app.services.tagging import TaggingService  # noqa: E402
+from app.workers.celery_app import celery_app  # noqa: E402
+
 
 # --- 5) Fake models so tests don't download HF models ---
 class FakeNER:
@@ -72,6 +76,7 @@ class FakeTagger(TaggingService):
         self.topic_weight = 1.0
 
 import pytest  # noqa: E402
+
 
 @pytest.fixture(autouse=True)
 def patch_runtime_objects(monkeypatch):

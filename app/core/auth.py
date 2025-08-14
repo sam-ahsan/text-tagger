@@ -1,7 +1,8 @@
 import os
+from typing import Dict, Optional
 
 from fastapi import Header, HTTPException, status
-from typing import Dict, Optional
+
 
 # Parse API_KEYS env into {key: tenant}
 def _load_api_keys() -> Dict[str, str]:

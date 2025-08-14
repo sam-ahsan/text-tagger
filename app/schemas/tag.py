@@ -1,15 +1,16 @@
-from pydantic import BaseModel, Field
-from typing import Annotated, List, Optional
 from enum import Enum
+from typing import Annotated, List, Optional
+
+from pydantic import BaseModel, Field
 
 SmallBatch = Annotated[List[str], Field(min_length=1, max_items=1000)]
 
 class JobStatus(str, Enum):
-    PENDING="PENDING";
-    STARTED="STARTED";
-    RETRY="RETRY";
-    FAILURE="FAILURE";
-    SUCCESS="SUCCESS";
+    PENDING="PENDING"
+    STARTED="STARTED"
+    RETRY="RETRY"
+    FAILURE="FAILURE"
+    SUCCESS="SUCCESS"
 
 class ErrorInfo(BaseModel):
     code: str
