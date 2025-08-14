@@ -53,5 +53,6 @@ jobs:
           CACHE_TTL_SECONDS: "60"
           CELERY_TAGGING_QUEUE: "tagging"
           CACHE_NS: "ci"
+          PYTHONPATH: "./"
         run: |
           pytest -q
