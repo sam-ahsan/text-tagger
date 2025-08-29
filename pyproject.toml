@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 120
-extend-select = ["E", "F", "I", "UP"]
+line.extend-select = ["E", "F", "I", "UP"]
 exclude = ["venv", ".venv", "build", "dist"]
 
 [tool.mypy]
