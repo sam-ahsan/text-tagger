@@ -1,9 +1,10 @@
 # tests/conftest.py
 import os
+
 import fakeredis
 
-from app.core.users import create_user, get_user
 from app.core.security import create_access_token
+from app.core.users import create_user, get_user
 
 # --- 1) Set env BEFORE importing app modules ---
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "true")
