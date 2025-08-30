@@ -1,7 +1,9 @@
 # tests/conftest.py
 import os
-
 import fakeredis
+
+from app.core.users import create_user, get_user
+from app.core.security import create_access_token
 
 # --- 1) Set env BEFORE importing app modules ---
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "true")
@@ -104,3 +106,30 @@ def patch_runtime_objects(monkeypatch):
 @pytest.fixture()
 def client():
     return TestClient(main_mod.app)
+
+@pytest.fixture(scope="session")
+def test_username() -> str:
+    return "test-user"
+
+@pytest.fixture(scope="session")
+def test_tenant() -> str:
+    return "test-tenant"
+
+@pytest.fixture(scope="session")
+def test_password() -> str:
+    return "test-password"
+
+@pytest.fixture()
+def auth_headers(test_username, test_password, test_tenant, client):
+    try:
+        user = get_user(test_username)
+        if not user:
+            create_user(test_username, test_password, tenant_id=test_tenant, roles=["user"])
+    except Exception:
+        pass
+    
+    token = create_access_token(
+        subject=test_username,
+        extra={"tenant_id": test_tenant, "roles": ["user"]}
+    )
+    return {"Authorization": f"Bearer {token}"}
