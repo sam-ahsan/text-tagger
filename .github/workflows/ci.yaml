@@ -59,6 +59,10 @@ jobs:
         run: |
           docker compose -f docker-compose.yaml -f docker-compose.ci.yaml build --no-cache
       
+      - name: Duplicate env for base compose
+        run: |
+          cp .env.ci .env
+
       - name: Start stack
         run: |
           docker compose -f docker-compose.yaml -f docker-compose.ci.yaml --env-file ./.env.ci up -d
