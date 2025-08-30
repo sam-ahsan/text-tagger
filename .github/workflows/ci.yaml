@@ -61,7 +61,7 @@ jobs:
       
       - name: Start stack
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file ./.env.ci up -d
+          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml --env-file ./.env.ci up -d
 
       - name: Wait for API to be healthy
         run: |
@@ -104,4 +104,4 @@ jobs:
       - name: Stop stack
         if: always()
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml down -v
