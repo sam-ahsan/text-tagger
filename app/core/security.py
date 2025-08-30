@@ -1,8 +1,8 @@
 import os
-
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Any, Dict
-from jose import jwt, JWTError
+from typing import Any, Dict, Optional
+
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

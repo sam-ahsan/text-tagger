@@ -1,9 +1,10 @@
 import json
+from typing import List, Optional
 
-from typing import Optional, Dict, Any, List
 from app.core.redis_client import get_redis
-from app.schemas.auth import User
 from app.core.security import hash_password, verify_password
+from app.schemas.auth import User
+
 
 def _user_key(username: str) -> str:
     return f"user:{username.lower()}"

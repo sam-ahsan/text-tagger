@@ -8,7 +8,8 @@ from fastapi import FastAPI, HTTPException, Request
 from prometheus_client import REGISTRY
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
-from app.api.v1 import tag, auth as auth_router
+from app.api.v1 import auth as auth_router
+from app.api.v1 import tag
 from app.core.metrics import RedisCeleryCollector, _queue_len
 from app.core.redis_client import get_redis
 from app.workers.celery_app import celery_app

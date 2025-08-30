@@ -1,12 +1,12 @@
 import time
 
-from fastapi import Depends, Response, HTTPException, status
+from fastapi import Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordBearer
 
-from app.core.security import decode_token
-from app.core.users import get_user
 from app.core.auth import AuthContext
 from app.core.rate_limit import check_rate_limit
+from app.core.security import decode_token
+from app.core.users import get_user
 from app.schemas.auth import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/token")
