@@ -1,0 +1,65 @@
+services:
+  redis:
+    image: "redis:7"
+    container_name: tt-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: tt-api
+    env_file:
+      - .env.ci
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --proxy-headers
+      --forwarded-allow-ips=*
+    volumes:
+      - ./:/app
+      - hf-cache:/root/.cache/huggingface
+      - torch-cache:/root/.cache/torch
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/healthz | grep -q 'ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  worker:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: tt-worker
+    env_file:
+      - .env.ci
+    command: >
+      celery -A app.workers.celery_app.celery_app
+      worker
+      -Q tagging
+      -l INFO
+      --concurrency=2
+      --prefetch-multiplier=1
+    volumes:
+      - ./:/app
+      - hf-cache:/root/.cache/huggingface
+      - torch-cache:/root/.cache/torch
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  hf-cache:
+  torch-cache:

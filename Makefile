@@ -8,7 +8,7 @@ REDIS=tt-redis
 HF_VOL=hf-cache
 TORCH_VOL=torch-cache
 
-.PHONY: dev up down restart logs logs-api logs-worker build rebuild clean shell-api shell-worker
+.PHONY: dev up down restart logs logs-api logs-worker build rebuild clean shell-api shell-worker ci
 
 dev:
 	$(COMPOSE) up api worker
@@ -46,3 +46,7 @@ shell-worker:
 clean:
 	$(COMPOSE) down -v --remove-orphans
 	docker volume rm $(HF_VOL) $(TORCH_VOL) || true
+
+ci:
+	$(COMPOSE) -f docker-compose.yaml -f docker-compose.ci.yaml up -d
+	$(COMPOSE) exec -T api pytest -q -vv
