@@ -57,7 +57,7 @@ jobs:
       
       - name: Build images
         run: |
-          docker-compose -f docker-compose.yaml -f docker-compose.ci.yaml build --no-cache
+          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml build --no-cache
       
       - name: Start stack
         run: |
