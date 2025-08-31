@@ -16,6 +16,7 @@ from app.workers.celery_app import celery_app
 task_logger = logging.getLogger("text-tagger.task")
 _tagger = TaggingService()
 _redis = get_redis()
+
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "600"))
 MAX_RETRIES = int(os.getenv("CELERY_MAX_RETRIES", "2"))
 
