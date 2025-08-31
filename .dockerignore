@@ -1,0 +1,23 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite*
+.env
+.env.*
+.venv/
+.envrc
+.mypy_cache/
+.pytest_cache/
+.cache/
+dist/
+build/
+node_modules/
+data/
+# Don’t bake caches into the image
+root/.cache/
+root/.cache/huggingface/
+root/.cache/torch/

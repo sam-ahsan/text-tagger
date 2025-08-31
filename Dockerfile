@@ -1,36 +1,57 @@
-FROM python:3.10.13-slim AS base
+# Dockerfile
+# ========== Builder stage ==========
+FROM python:3.10-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/app \
-    HF_HOME=/root/.cache/huggingface
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 
-# System deps for building wheels (if needed)
+# Minimal OS deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl ca-certificates git \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy requirement files first for better caching
+# Copy only requirements first for better layer caching
 COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy rest of the source
-COPY . /app
+# Install deps (CPU-only torch via extra index in requirements.txt)
+RUN python -m pip install --upgrade pip \
+    && pip install -r requirements.txt
+
+# ========== Final runtime stage ==========
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    # HF_HOME=/home/appuser/.cache/huggingface \
+    HF_HOME=/data/hf \
+    # HUGGINGFACE_HUB_CACHE=/home/appuser/.cache/huggingface
+    HUGGINGFACE_HUB_CACHE=/data/hf \
+    TORCH_HOME=/data/torch
 
 # Create non-root user
-RUN useradd -m appuser \
-    && mkdir -p /home/appuser/.cache/huggingface /home/appuser/.cache/torch \
-    && chown -R appuser:appuser /home/appuser/.cache
+RUN useradd -m -u 10001 appuser
 
-ENV HF_HOME=/home/appuser/.cache/huggingface \
-    TRANSFORMERS_CACHE=/home/appuser/.cache/huggingface \
-    HUGGINGFACE_HUB_CACHE=/home/appuser/.cache/huggingface \
-    TORCH_HOME=/home/appuser/.cache/torch
+WORKDIR /app
+
+# Bring in installed site-packages and binaries from builder
+COPY --from=builder /usr/local /usr/local
+
+# Copy application code
+COPY app /app/app
+
+# Pre-create cache dirs and make them writable
+# RUN mkdir -p /home/appuser/.cache/huggingface \
+#             /home/appuser/.cache/torch \
+#     && chown -R appuser:appuser /home/appuser/.cache
+RUN mkdir -p /data/hf /data/torch && chown -R appuser:appuser /data
 
 USER appuser
 
-# Default command can be overriden by docker-compose
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default: API command (dev/prod override in compose)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]

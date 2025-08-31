@@ -26,17 +26,18 @@ services:
       --reload
     volumes:
       - ./:/app
-      - hf-cache:/home/appuser/.cache/huggingface
-      - torch-cache:/home/appuser/.cache/torch
+      # keep these in sync with HF_HOME + torch cache
+      - hf-cache:/data/hf
+      - torch-cache:/data/torch
     ports:
       - "8000:8000"
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health | grep -q 'ok'"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/healthz | grep -q 'ok'"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 10
 
   worker:
@@ -55,8 +56,8 @@ services:
       --prefetch-multiplier=1
     volumes:
       - ./:/app
-      - hf-cache:/home/appuser/.cache/huggingface
-      - torch-cache:/home/appuser/.cache/torch
+      - hf-cache:/data/hf
+      - torch-cache:/data/torch
     depends_on:
       redis:
         condition: service_healthy
