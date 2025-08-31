@@ -23,10 +23,10 @@ services:
       --port 8000
       --proxy-headers
       --forwarded-allow-ips=*
-    volumes:
-      - ./:/app
-      - hf-cache:/root/.cache/huggingface
-      - torch-cache:/root/.cache/torch
+    # volumes:
+    #   - ./:/app
+    #   - hf-cache:/root/.cache/huggingface
+    #   - torch-cache:/root/.cache/torch
     ports:
       - "8000:8000"
     depends_on:
@@ -52,14 +52,14 @@ services:
       -l INFO
       --concurrency=2
       --prefetch-multiplier=1
-    volumes:
-      - ./:/app
-      - hf-cache:/root/.cache/huggingface
-      - torch-cache:/root/.cache/torch
+    # volumes:
+    #   - ./:/app
+    #   - hf-cache:/root/.cache/huggingface
+    #   - torch-cache:/root/.cache/torch
     depends_on:
       redis:
         condition: service_healthy
 
-volumes:
-  hf-cache:
-  torch-cache:
+# volumes:
+#   hf-cache:
+#   torch-cache:
