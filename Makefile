@@ -1,5 +1,5 @@
 ENV_FILE=.env
-COMPOSE=docker-compose --env-file $(ENV_FILE)
+COMPOSE=docker compose --env-file $(ENV_FILE)
 
 API=tt-api
 WORKER=tt-worker
@@ -50,3 +50,4 @@ clean:
 ci:
 	$(COMPOSE) -f docker-compose.yaml -f docker-compose.ci.yaml up -d
 	$(COMPOSE) exec -T api pytest -q -vv
+	$(COMPOSE) down -v --remove-orphans

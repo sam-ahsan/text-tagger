@@ -1,12 +1,10 @@
-name: CI
+name: Test Commit
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 concurrency:
@@ -17,20 +15,39 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install host dev tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (mypy)
+        continue-on-error: true
+        run: mypy app
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Cache Docker Layers
+
+      - name: Cache Docker layers
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
-      
+
       - name: Write CI env file
         run: |
           cat > .env.ci << 'EOF'
@@ -38,6 +55,7 @@ jobs:
           JWT_SECRET=ci-secret
           JWT_ALG=HS256
           ACCESS_TOKEN_EXPIRE_MINUTES=60
+
           # --- Celery / Redis ---
           REDIS_URL=redis://redis:6379/0
           CELERY_TAGGING_QUEUE=tagging
@@ -45,67 +63,29 @@ jobs:
           CELERY_TIME_LIMIT=60
           CELERY_RESULT_EXPIRES=3600
           CACHE_TTL_SECONDS=600
+
           # --- Rate limiting (high during CI) ---
           RATE_LIMIT_REQS=1000
           RATE_LIMIT_WINDOW=60
+
           # --- Python path inside container ---
           PYTHONPATH=/app
-          # --- HuggingFace/torch caches (already volume mounted) ---
-          TRANSFORMERS_CACHE=/root/.cache/huggingface
-          HF_HOME=/root/.cache/huggingface
+
+          # --- HF cache in a writable location for containers ---
+          HF_HOME=/tmp/hf
+          HUGGINGFACE_HUB_CACHE=/tmp/hf
+          HF_HUB_DISABLE_TELEMETRY=1
+          TRANSFORMERS_VERBOSITY=error
           EOF
-      
-      - name: Build images
-        run: |
-          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml build --no-cache
-      
+
       - name: Duplicate env for base compose
-        run: |
-          cp .env.ci .env
+        run: cp .env.ci .env
 
-      - name: Start stack
+      - name: Run make ci (compose up + tests inside api + down)
         run: |
-          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml --env-file ./.env.ci up -d
-
-      - name: Wait for API to be healthy
-        run: |
-          for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/healthz || true)
-            if [ "$code" = "200" ]; then
-              echo "API is healthy"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "API failed to become healthy"
-          docker compose ps
-          docker compose logs api worker redis --tail=200
-          exit 1
-
-      - name: Install test deps inside container
-        run: |
-          # If you keep dev deps separate, install them here.
-          docker compose exec -T api /bin/sh -lc 'pip install -q pytest httpx fakeredis ruff mypy'
-
-      - name: Lint (ruff)
-        run: |
-          docker compose exec -T api ruff check .
-
-      - name: Type check (mypy)
-        continue-on-error: true
-        run: |
-          docker compose exec -T api mypy app
-
-      - name: Run tests
-        run: |
-          docker compose exec -T api pytest -q -vv
+          make ci
 
       - name: Dump logs on failure
         if: failure()
         run: |
-          docker compose logs api worker redis --tail=500 || true
-
-      - name: Stop stack
-        if: always()
-        run: |
-          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml down -v
+          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml logs api worker redis --tail=500 || true
